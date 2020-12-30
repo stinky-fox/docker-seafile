@@ -34,6 +34,10 @@ services:
       - SEAFILE_ADMIN_PASSWORD=enter_admin_password
       - SEAFILE_SERVER_LETSENCRYPT=true
       - SEAFILE_SERVER_HOSTNAME=enter_server_hostname
+    logging:
+      options:
+        max-size: "50m"
+        max-file: "3"
     depends_on:
       - db
       - memcached
