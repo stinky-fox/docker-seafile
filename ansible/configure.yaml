@@ -1,0 +1,68 @@
+---
+- name: Configure seafile
+  hosts: all
+  user: ec2-user
+  become: yes
+  tasks:
+
+    - name: Wait 300 seconds, but only start checking after 60 seconds
+      wait_for_connection:
+        delay: 60
+        timeout: 300
+
+    - name: cURL the compose file
+      get_url:
+        url: https://raw.githubusercontent.com/stinky-fox/docker-seafile/main/docker-compose.yaml
+        dest: ~/docker-compose.yaml
+
+    - name: Change DB password
+      replace:
+        path: "~/docker-compose.yaml"
+        regexp: enter_db_password
+        replace: '{{ my_db_password }}'
+
+    - name: Change admin email
+      replace:
+        path: "~/docker-compose.yaml"
+        regexp: enter_admin_username
+        replace: '{{ my_admin_email }}'
+
+    - name: Change admin password
+      replace:
+        path: "~/docker-compose.yaml"
+        regexp: enter_admin_password
+        replace: '{{ my_admin_password }}'
+
+    - name: Change DNS name
+      replace:
+        path: "~/docker-compose.yaml"
+        regexp: enter_server_hostname
+        replace: '{{ my_dns_hostname }}'
+
+    - name: Run docker-compose
+      shell: docker-compose -f ~/docker-compose.yaml up -d
+    
+    - name: Wait untill ccnet.conf is present
+      wait_for:
+        path: "/opt/seafile-data/seafile/conf/ccnet.conf"
+
+    - name: Edit ccnet.conf file to make sure links are pointing correctly to https://<hostname>:443 port
+      replace:
+        path: "/opt/seafile-data/seafile/conf/ccnet.conf"
+        regexp: (http:\/\/.+\:8000$)
+        replace: '{{ "https://" +  my_dns_hostname }}'
+   
+    # wait for 120 seconds until Seafile will be up and running. must be changed to perform a proper check in via the api the future
+    - name: 
+      wait_for:
+        timeout: 120
+
+    - name: copy and execute script
+      script: 
+        cmd: sfConfig.sh {{ my_dns_hostname }} {{ my_admin_email }} {{ my_admin_password }}
+      register: my_protected_link
+    
+    - name: create a file with link and password
+      shell: echo {{ my_protected_link.stdout }} >> link_password.txt
+      connection: local
+      delegate_to: localhost
