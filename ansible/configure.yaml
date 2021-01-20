@@ -63,6 +63,6 @@
       register: my_protected_link
     
     - name: create a file with link and password
-      shell: echo {{ my_protected_link.stdout }} >> link_password.txt
+      shell: echo '{{ my_protected_link.stdout }}' >> link_password.txt
       connection: local
       delegate_to: localhost
